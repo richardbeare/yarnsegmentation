@@ -1,0 +1,14 @@
+Yarn segmentation for Dorian.
+
+This is ITK code, tested against ITK 3.20, which must be
+built with REVIEW ON, as that is where the marker based
+watershed lives.
+
+There is no command line argument checking, so it will crash
+if things are wrong. 
+
+2D, unsigned char images are assumed. Input is the filtered yarn image
+and the skeleton image in which the approximately horizontal skeletons
+line up with the dark parts of the filtered image.
+
+ 
