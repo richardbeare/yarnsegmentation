@@ -50,25 +50,14 @@ int main(int argc, char*argv[])
   SelectLines->SetInput(WshedStage1->GetOutput());
   SelectLines->SetLowerThreshold(0);
   SelectLines->SetUpperThreshold(0);
-  SelectLines->SetInsideValue(1);
+  SelectLines->SetInsideValue(2);
   SelectLines->SetOutsideValue(0);
   writeIm<RawImType>(SelectLines->GetOutput(), "lines.png");
 
-  itk::Instance < itk::ConnectedComponentImageFilter<RawImType, LabImType> > Labeller2;
-  Labeller2->SetInput(SelectLines->GetOutput());
-  Labeller2->SetFullyConnected(true);
 
-  itk::Instance<itk::AddConstantToImageFilter <LabImType, LabImType::PixelType, LabImType> > AddOffset;
-  AddOffset->SetInput(Labeller2->GetOutput());
-  AddOffset->SetConstant(bgmarkercount + 1);
-
-  itk::Instance< itk::MaskImageFilter< LabImType, RawImType> > Masker;
-  Masker->SetInput(AddOffset->GetOutput());
-  Masker->SetInput2(SelectLines->GetOutput());
-
-  itk::Instance< itk::MaximumImageFilter< LabImType, LabImType> > Combiner;
-  Combiner->SetInput(Masker->GetOutput());
-  Combiner->SetInput2(Labeller->GetOutput());
+  itk::Instance< itk::MaximumImageFilter< RawImType, RawImType> > Combiner;
+  Combiner->SetInput(darkmarkers);
+  Combiner->SetInput2(SelectLines->GetOutput());
 
   itk::Instance< itk::GradientMagnitudeRecursiveGaussianImageFilter <RawImType, RawImType> > Grad;
 
@@ -76,27 +65,30 @@ int main(int argc, char*argv[])
   Grad->SetInput(raw);
   Grad->SetSigma(0.15);
 
-  itk::Instance< itk::MorphologicalWatershedFromMarkersImageFilter<RawImType, LabImType> > WshedStage2;
+  itk::Instance< itk::MorphologicalWatershedFromMarkersImageFilter<RawImType, RawImType> > WshedStage2;
 
   WshedStage2->SetInput(Grad->GetOutput());
   WshedStage2->SetMarkerImage(Combiner->GetOutput());
   // don't want the lines this time
   WshedStage2->SetMarkWatershedLine(false);
 
-  writeIm<LabImType>(WshedStage2->GetOutput(), "seg.tif");
+  writeIm<RawImType>(WshedStage2->GetOutput(), "seg.tif");
   writeIm<RawImType>(Grad->GetOutput(), "grad.tif");
 
   // save some overlay images for debgugging
   typedef itk::RGBPixel<unsigned char>   RGBPixelType;
   typedef itk::Image<RGBPixelType, dim>    RGBImageType;
 
-  itk::Instance< itk::LabelOverlayImageFilter<RawImType, LabImType, RGBImageType> > LabOverlay;
+  itk::Instance< itk::LabelOverlayImageFilter<RawImType, RawImType, RGBImageType> > LabOverlay;
   LabOverlay->SetInput(raw);
-  LabOverlay->SetLabelImage(WshedStage1->GetOutput());
+  LabOverlay->SetLabelImage(SelectLines->GetOutput());
   writeIm<RGBImageType>(LabOverlay->GetOutput(), "stage1_wslines.png");
 
   LabOverlay->SetLabelImage(WshedStage2->GetOutput());
   writeIm<RGBImageType>(LabOverlay->GetOutput(), "stage2_ws.png");
+
+  LabOverlay->SetLabelImage(Combiner->GetOutput());
+  writeIm<RGBImageType>(LabOverlay->GetOutput(), "stage2_markers.png");
 
   std::cout << "bg objects: " << bgmarkercount << std::endl;
 
